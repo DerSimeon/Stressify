@@ -1,0 +1,13 @@
+### GRADLE ###
+.gradle
+/build/
+
+### IDEA ###
+*.iml
+.idea/
+
+### RUN ###
+run/
+
+### MISC ###
+*.zip

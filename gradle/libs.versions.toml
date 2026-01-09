@@ -1,0 +1,27 @@
+[versions]
+kotlin = "2.3.0"
+shadow = "9.3.1"
+clikt = "5.0.3"
+mcprotocollib = "1.21.11-feature-custom-entities"
+jansi = "2.4.2"
+serializer = "4.26.1"
+coroutines = "1.10.2"
+compose = "1.10.0-rc02"
+material = "1.11.0-alpha01"
+
+[plugins]
+kotlin = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+shadow = { id = "com.gradleup.shadow", version.ref = "shadow" }
+compose = { id = "org.jetbrains.compose", version.ref = "compose" }
+compose-kotlin = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+
+[libraries]
+clikt = { module = "com.github.ajalt.clikt:clikt", version.ref = "clikt" }
+clikt-markdown = { module = "com.github.ajalt.clikt:clikt-markdown", version.ref = "clikt" }
+mcprotocollib = { module = "org.geysermc.mcprotocollib:protocol", version.ref = "mcprotocollib" }
+jansi = { module = "org.fusesource.jansi:jansi", version.ref = "jansi" }
+coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
+serializer-ansi = { module = "net.kyori:adventure-text-serializer-ansi", version.ref = "serializer" }
+serializer-plain = { module = "net.kyori:adventure-text-serializer-plain", version.ref = "serializer" }
+material3-desktop = { module = "org.jetbrains.compose.material3:material3", version.ref = "material" }
+compose-resources = { module = "org.jetbrains.compose.components:components-resources", version.ref = "compose" }

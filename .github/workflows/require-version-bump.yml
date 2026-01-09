@@ -1,0 +1,42 @@
+name: Require version bump
+
+on:
+  pull_request:
+
+jobs:
+  version-bump:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (PR)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Compare versions
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          BASE_REF="${{ github.base_ref }}"
+          git fetch origin "${BASE_REF}":"origin/${BASE_REF}"
+
+          base_version="$(git show "origin/${BASE_REF}:build.gradle.kts" | sed -n 's/^version\s*=\s*"\(.*\)".*/\1/p' | head -n1 || true)"
+          head_version="$(sed -n 's/^version\s*=\s*"\(.*\)".*/\1/p' build.gradle.kts | head -n1 || true)"
+
+          # If the build script computes version dynamically, fall back to checking that the version line changed.
+          if [[ -z "${head_version}" || -z "${base_version}" ]]; then
+            echo "Version is not a simple string. Checking whether build.gradle.kts changed in this PR."
+            if git diff --name-only "origin/${BASE_REF}...HEAD" | grep -qx "build.gradle.kts"; then
+              echo "build.gradle.kts changed: OK"
+              exit 0
+            fi
+            echo "::error::This PR must bump the project version (update build.gradle.kts)."
+            exit 1
+          fi
+
+          if [[ "${head_version}" == "${base_version}" ]]; then
+            echo "::error::Version was not bumped. Base=${base_version} Head=${head_version}"
+            exit 1
+          fi
+
+          echo "OK: Base=${base_version} Head=${head_version}"

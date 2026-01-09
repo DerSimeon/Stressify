@@ -1,0 +1,152 @@
+name: Auto Release (native)
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-main
+  cancel-in-progress: false
+
+jobs:
+  tag:
+    name: Create tag
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+      version: ${{ steps.tag.outputs.version }}
+      skipped: ${{ steps.tag.outputs.skipped }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create tag from build.gradle.kts version
+        id: tag
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git fetch --tags --force
+
+          # Extract version assignment from build.gradle.kts
+          version="$(sed -n 's/^version\s*=\s*"\(.*\)"/\1/p' build.gradle.kts | head -n1)"
+
+          if [[ -z "$version" ]]; then
+            echo "::error::Could not determine version from build.gradle.kts"
+            exit 1
+          fi
+
+          if [[ "$version" == *SNAPSHOT* ]]; then
+            echo "::error::Refusing to tag SNAPSHOT version: $version"
+            exit 1
+          fi
+
+          tag="v$version"
+
+          if git tag -l | grep -qx "$tag"; then
+            echo "::error::Tag $tag already exists. Bump the version before merging."
+            exit 1
+          fi
+
+          echo "Creating tag $tag"
+          git tag "$tag"
+          git push origin "$tag"
+
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+  build-native:
+    name: Build native (${{ matrix.os }})
+    needs: tag
+    if: needs.tag.outputs.tag != ''
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.tag.outputs.tag }}
+          fetch-depth: 0
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Install Linux packaging deps
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y fakeroot rpm
+
+      - name: Adjust gradlew permissions
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          chmod +x ./gradlew
+
+      - name: Build native distribution for current OS
+        shell: bash
+        run: |
+          ./gradlew --no-daemon clean packageReleaseDistributionForCurrentOS
+
+      - name: Collect artifacts
+        shell: bash
+        run: |
+          mkdir -p dist
+          if [ -d "build/compose/binaries/main-release" ]; then
+            find build/compose/binaries/main-release -type f \
+              \( -name "*.msi" -o -name "*.dmg" -o -name "*.deb" -o -name "*.rpm" -o -name "*.zip" -o -name "*.tar.gz" \) \
+              -print -exec cp {} dist/ \;
+          fi
+
+          if [ ! "$(ls -A dist 2>/dev/null)" ]; then
+            echo "No matching artifacts found, copying everything from main-release."
+            find build/compose/binaries/main-release -type f -maxdepth 3 -print -exec cp {} dist/ \;
+          fi
+
+          ls -lah dist
+
+      - name: Upload artifacts (job)
+        uses: actions/upload-artifact@v4
+        with:
+          name: stressify-${{ runner.os }}
+          path: dist/*
+
+  release:
+    name: Publish GitHub Release
+    needs: [tag, build-native]
+    runs-on: ubuntu-latest
+    if: needs.tag.outputs.tag != ''
+
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist-all
+
+      - name: List downloaded files
+        run: |
+          find dist-all -type f -maxdepth 4 -print
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.tag.outputs.tag }}
+          name: Stressify ${{ needs.tag.outputs.tag }}
+          generate_release_notes: true
+          files: |
+            dist-all/**/*
