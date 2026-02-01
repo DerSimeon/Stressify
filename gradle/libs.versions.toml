@@ -7,7 +7,7 @@ jansi = "2.4.2"
 serializer = "4.26.1"
 coroutines = "1.10.2"
 compose = "1.11.0-alpha02"
-material = "1.11.0-alpha01"
+material = "1.11.0-alpha02"
 
 [plugins]
 kotlin = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
