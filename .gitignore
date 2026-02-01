@@ -11,3 +11,4 @@ run/
 
 ### MISC ###
 *.zip
+.kotlin/

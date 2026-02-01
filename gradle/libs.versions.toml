@@ -1,7 +1,7 @@
 [versions]
 kotlin = "2.3.0"
 shadow = "9.3.1"
-clikt = "5.0.3"
+clikt = "5.1.0"
 mcprotocollib = "1.21.11-feature-custom-entities"
 jansi = "2.4.2"
 serializer = "4.26.1"
