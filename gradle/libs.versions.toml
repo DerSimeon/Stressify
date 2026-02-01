@@ -6,7 +6,7 @@ mcprotocollib = "1.21.11-feature-custom-entities"
 jansi = "2.4.2"
 serializer = "4.26.1"
 coroutines = "1.10.2"
-compose = "1.10.0-rc02"
+compose = "1.11.0-alpha02"
 material = "1.11.0-alpha01"
 
 [plugins]

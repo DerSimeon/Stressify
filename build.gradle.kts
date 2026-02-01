@@ -81,3 +81,7 @@ compose.desktop {
         }
     }
 }
+
+kotlin {
+    jvmToolchain(25)
+}

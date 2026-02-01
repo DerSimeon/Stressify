@@ -6,6 +6,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import lol.simeon.stressify.protocol.MinecraftAddress
 import org.geysermc.mcprotocollib.auth.SessionService
 import org.geysermc.mcprotocollib.network.ClientSession
@@ -23,9 +25,11 @@ import kotlin.concurrent.atomics.ExperimentalAtomicApi
 class Bot(
     val protocol: MinecraftProtocol,
     val address: MinecraftAddress,
+    val withGravity: Boolean = false,
     private val autoRespawnDelayMs: Long = 0L,
     private val onConnected: (bot: Bot) -> Unit,
-    private val onDead: (bot: Bot, reason: String?, cause: Throwable?) -> Unit
+    private val onDead: (bot: Bot, reason: String?, cause: Throwable?) -> Unit,
+    private val emitLog: (bot: Bot, message: String) -> Unit
 ) {
     val nickname: String = protocol.profile.name
 
@@ -89,18 +93,33 @@ class Bot(
         moveTo(lastX + dx, lastY + dy, lastZ + dz)
     }
 
-    fun fallDown(step: Double = 0.5) {
+    fun startGravity(step: Double = 0.5, intervalMs: Long = 100L) {
+        scope.launch {
+            while (connected) {
+                attemptToMoveDown(step)
+                delay(intervalMs)
+            }
+        }
+    }
+
+    fun attemptToMoveDown(step: Double = 0.5) {
         if (connected && lastY > 0) move(0.0, -step, 0.0)
     }
 
     internal fun onConnected() {
         connected = true
         onConnected(this)
+        emitLog(this, "$nickname is Connected")
+        emitLog(this, "position of $nickname is x=$lastX, y=$lastY, z=$lastZ. ${lastY > 0}")
+        if (withGravity) {
+            emitLog(this, "Starting gravity for bot $nickname")
+            startGravity()
+        }
     }
 
     internal fun onDisconnected(reason: String?, cause: Throwable?) {
 
-        if (deadNotified.compareAndSet(false, true)) {
+        if (deadNotified.compareAndSet(expectedValue = false, newValue = true)) {
             connected = false
             onDead(this, reason, cause)
         }

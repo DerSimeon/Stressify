@@ -6,16 +6,19 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asDesktopBitmap
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.res.loadImageBitmap
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowPlacement
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
+import com.github.ajalt.mordant.rendering.VerticalAlign
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
@@ -90,6 +93,8 @@ private fun BotUi() {
 
     val bots = remember(botStates) { botStates.map { it.name } }
 
+    val applyGravity = remember { mutableStateOf(false) }
+
     LaunchedEffect(manager) {
         log = emptyList()
         val m = manager ?: return@LaunchedEffect
@@ -144,13 +149,34 @@ private fun BotUi() {
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                OutlinedTextField(
-                    value = countText,
-                    onValueChange = { countText = it.filter(Char::isDigit).ifBlank { "" } },
-                    label = { Text("Bot count") },
-                    singleLine = true,
-                    modifier = Modifier.widthIn(max = 220.dp)
-                )
+
+
+                // checkbox "should attempt to apply gravity"
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedTextField(
+                        value = countText,
+                        onValueChange = { countText = it.filter(Char::isDigit).ifBlank { "" } },
+                        label = { Text("Bot count") },
+                        singleLine = true,
+                        modifier = Modifier.widthIn(max = 220.dp)
+                    )
+
+                    Spacer(Modifier.weight(1f))
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text("Apply gravity to bots ", style = MaterialTheme.typography.bodyMedium)
+                        Switch(
+                            checked = applyGravity.value,
+                            onCheckedChange = { value -> applyGravity.value = value }
+                        )
+                    }
+                }
 
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Button(
@@ -162,8 +188,8 @@ private fun BotUi() {
                                 return@Button
                             }
 
-                            manager = BotManager(nickGen, addr, cnt)
-                            pushLog("Launching $cnt bots -> ${addr.hostname}:${addr.port}")
+                            manager = BotManager(nickGen, addr, cnt, applyGravity.value)
+                            pushLog("Launching $cnt bots -> ${addr.hostname}:${addr.port} and applyGravity=${applyGravity.value}...")
 
                             scope.launch(Dispatchers.IO) {
                                 runCatching { manager!!.connectAll() }
@@ -176,7 +202,8 @@ private fun BotUi() {
                         enabled = connected,
                         onClick = {
                             scope.launch(Dispatchers.IO) {
-                                manager?.disconnectAll("Disconnect")
+                                runCatching {  manager?.disconnectAll("Disconnect") }
+                                    .onFailure { pushLog("Disconnect failed: ${it.message}") }
                             }
                             selectedBot = null
                             pushLog("Disconnected.")

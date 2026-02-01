@@ -22,7 +22,8 @@ import java.util.concurrent.atomic.AtomicInteger
 class BotManager(
     val nickname: NickGenerator,
     val address: MinecraftAddress,
-    val count: Int
+    val count: Int,
+    val withGravity: Boolean = false
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -70,6 +71,7 @@ class BotManager(
             val bot = Bot(
                 protocol = protocol,
                 address = address,
+                withGravity = withGravity,
                 autoRespawnDelayMs = autoRespawnDelayMs,
                 onConnected = { b ->
                     val now = online.incrementAndGet()
@@ -106,6 +108,9 @@ class BotManager(
                     if (nowOnline <= 0 && !allDead.isCompleted) {
                         allDead.complete(Unit)
                     }
+                },
+                emitLog = { _, message ->
+                    _logs.tryEmit(message)
                 }
             )
 
