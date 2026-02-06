@@ -1,5 +1,5 @@
 [versions]
-kotlin = "2.3.0"
+kotlin = "2.3.10"
 shadow = "9.3.1"
 clikt = "5.1.0"
 mcprotocollib = "1.21.11-feature-custom-entities"
